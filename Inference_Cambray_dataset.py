@@ -1,3 +1,8 @@
+### This script was used to perform inference on the Cambray et al. dataset. 
+### It takes as input two .npy files, 'Nj_merged' and 'Sij_merged', files created from the script 'Merging_repetitions_Cambray.ipynb'
+### Results of the inference (both ML and MOM) are returned as 'Cambray_results_merged.csv'
+
+
 import numpy as np
 import pandas as pd
 import random
