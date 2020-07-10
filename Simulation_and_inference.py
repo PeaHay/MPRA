@@ -1,3 +1,11 @@
+### This python script is the basis to simulate MPRA and perform inference on the data generated
+### You can choose your own experimental parameters in section 1, named " #####   Experimental Parameters-Insert Values  ######## "
+### It requires as input 'Taniguchi_data.csv' and outputs the results of the inference and simulation: 'data_inference.csv''data_simulation.csv'
+### The ML inference step is by default the log-reparameterisation of the ML formulation, you can select other likelihoods (w/wo penalty and choosing the penalty) displayed in section 2 " ####  Functions   #### "
+### by modifying the function called in the last section  (" #### Inference on MPRA data ####') :  Data_results = Parallel(n_jobs=-1,max_nbytes=None)(delayed(ML_inference_reparameterised)(i)for i in range(Diversity)) to select the right likelihood 
+
+
+
 import numpy as np
 import pandas as pd
 import random
@@ -29,12 +37,12 @@ BUDGET_READS=1e7  #Number of reads to allocate. Budget
 def sample_high_regime(p):  
     logB=(4.5) * np.random.random_sample(p) + 2.7
     a=slope*logB+intercept+(np.random.beta(2, 1.8, size=p)-0.5)*8
-    return(logB,a)
+    return(abs(a),np.exp(logB))
 
 def sample_low_regime(p):
     A=(4.5) * np.random.random_sample(p)+0.1
     B=0.5+(np.random.beta(3.6, 2.0, size=p))/(A/4+0.15)
-    return(A,B)
+    return(A,abs(B))
 
 #This function is necessary for step 3 of the simulation algorithm. It computes the probability of a genetic construct to fall into one bin, thus enabling to simulate the sorting matrix 
 # We're now examining the modified fluoerscence distribution where the shape parameter b has been multiplied by the fluoerscence ratio kappa.
@@ -263,8 +271,8 @@ for i in range(1018,Diversity):
     Reg=np.random.beta(3.6, 2.0)  #introducing asymetry: most additional constructs will be part of the low noise regime
     if Reg>0.5:
         new_construct=sample_high_regime(1)
-        A[i]=new_construct[1]
-        B[i]=np.exp(new_construct[0])
+        A[i]=new_construct[0]
+        B[i]=new_construct[1]
     else:
         new_construct=sample_low_regime(1)
         A[i]=new_construct[0]
