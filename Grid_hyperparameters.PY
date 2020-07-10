@@ -1,3 +1,9 @@
+### This code generates the matrix data in fig 1. It simulates several MPRA experiments with different experimental parameters.
+### You can choose your own parameters by inserting the range of parametetrs and experimental parameters in section 1, named " #####  Experimental parameters to vary-setting the grid  ######## "
+### This code takes as input 'Taniguchi_data.csv' and outputs several matrix in .npy format: ('Inf_reliable','Mean_sur_MOM','Mean_sur_MLE','Var_sur_MOM','Var_sur_MLE')
+### The ML inference step is by default the log-reparameterisation of the ML formulation, you can select other likelihoods (w/wo penalty and choosing the penalty) displayed in section 2 " ####  Functions   #### "
+### by modifying the function called in line 418:  Data_results = Parallel(n_jobs=-1,max_nbytes=None)(delayed(ML_inference_reparameterised)(i)for i in range(Diversity)) to select the right likelihood
+
 import numpy as np
 import pandas as pd
 import random
@@ -15,16 +21,12 @@ from joblib import Parallel, delayed
 ##############################################################################################################
 #######################  Experimental parameters to vary-setting the grid  ###################################
 
-# Simulation_number=[1,2,3,4,5,6,7,8,9,10]  # Number of simulations with identical initial conditions to account for the sampling variability (Frequentist idea)
-# Reads_list=[0.5e5,1e5,0.5e6,1e6,1e7]     #DNA reads, range of values 
-# Cells_sorted=[0.5e5,1e5,0.5e6,1e6,1e7]   #Number of cells sorted by the flow cytometry , range of values
-
-#### Parameters to vary during the simulations
-Simulation_number=[1,2]  # Number of simulations with identical initial conditions to account for the sampling variability (Frequentist idea)
+#### Range of parameters to vary during the simulations
+Simulation_number=[1,2,3,4,5,6,7,8,9,10]  # Number of simulations with identical initial conditions to account for the sampling variability (Frequentist idea)
 Reads_list=[0.5e5,1e5,0.5e6,1e6,1e7]     #DNA reads, range of values 
-Cells_sorted=[0.5e5,1e5,0.5e6,1e6,1e7]
+Cells_sorted=[0.5e5,1e5,0.5e6,1e6,1e7]   #Number of cells sorted by the flow cytometry , range of values
 
-##### Experimental Parameters
+##### Experimental Parameters---ONE PARAMETER ONLY---
 Diversity=1018 #Number of variants in your library (Using the data from taniguchi et al and augmenting if Diversity>1018)
 BIAS_LIBRARY=False   #False if each genetic construct is homogeneously represented accross the library. True if the ratios are to be sampled from Dirichlet(1,1,...,1)
 Ratio_amplification=100  #post-flowcytometer step
@@ -429,10 +431,7 @@ for s in range(Simulation_length):
                 df4['sigma_squared_relative_error_MOM']=df4.apply(lambda row: np.abs(row['sigma_squared_MOM']-row['variance'])/row['variance'] 
                                                                   if   row['reliable_amount_of_cells_unknown']==1 and row['Inference_grade']<2  else 0     , axis=1)
 
-                print('stop, where are we?')
                 N_selected=df4['mu_relative_error_MLE'].astype(bool).sum(axis=0)
-                print(N_selected)
-                print(s,r,c)
 
                 Inf_reliable[s,r,c]=N_selected
                 if N_selected!=0:
