@@ -54,12 +54,12 @@ Inf_reliable=np.zeros((Simulation_length,Cells_length,Reads_length))
 def sample_high_regime(p):  
     logB=(4.5) * np.random.random_sample(p) + 2.7
     a=slope*logB+intercept+(np.random.beta(2, 1.8, size=p)-0.5)*8
-    return(logB,a)
+    return(abs(a),np.exp(logB))
 
 def sample_low_regime(p):
     A=(4.5) * np.random.random_sample(p)+0.1
     B=0.5+(np.random.beta(3.6, 2.0, size=p))/(A/4+0.15)
-    return(A,B)
+    return(A,abs(B))
 
 #This function is necessary for step 3 of the simulation algorithm. It computes the probability of a genetic construct to fall into one bin, thus enabling to simulate the sorting matrix 
 # We're now examining the modified fluoerscence distribution where the shape parameter b has been multiplied by the fluoerscence ratio kappa.
@@ -288,8 +288,8 @@ for i in range(1018,Diversity):
     Reg=np.random.beta(3.6, 2.0)  #introducing asymetry: most additional constructs will be part of the low noise regime
     if Reg>0.5:
         new_construct=sample_high_regime(1)
-        A[i]=new_construct[1]
-        B[i]=np.exp(new_construct[0])
+        A[i]=new_construct[0]
+        B[i]=new_construct[1]
     else:
         new_construct=sample_low_regime(1)
         A[i]=new_construct[0]
