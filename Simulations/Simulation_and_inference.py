@@ -118,6 +118,23 @@ def intensity_parameter_reparameterisation(i,j,alpha,beta):
         return Number_construct*probability_bin*READS[j]/Nj[j]
 
 
+def neg_ll(theta,construct):
+    #Compute negative likelihood
+    a=theta[0]
+    b=theta[1]
+    NL=0
+    i=construct
+    #if a>30 or b>20000:
+        #NL=2000
+    for j in range(BINS):
+        intensity=intensity_parameter(i,j,a,b)
+        if Sij[construct,j]!=0:
+            if intensity>0: #Avoid float error with np.log
+                NL+=intensity-Sij[i,j]*np.log(intensity)
+        else:
+            NL+=intensity
+    return(NL)
+      
 def neg_ll_reg_rep(theta,construct): 
     #Compute regularised negative likelihood with the log reparameterisation of a and b (shape and scale)
     alpha=theta[0]
