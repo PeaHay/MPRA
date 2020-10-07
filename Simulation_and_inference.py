@@ -44,44 +44,33 @@ def sample_low_regime(p):
     B=0.5+(np.random.beta(3.6, 2.0, size=p))/(A/4+0.15)
     return(A,abs(B))
 
-#This function is necessary for step 3 of the simulation algorithm. It computes the probability of a genetic construct to fall into one bin, thus enabling to simulate the sorting matrix 
-# We're now examining the modified fluoerscence distribution where the shape parameter b has been multiplied by the fluoerscence ratio kappa.
+
 def sorting_protein_matrix_populate(i,j):
+    #This function is necessary for step 3 of the simulation algorithm. It computes the probability of a genetic construct to fall into one bin, thus enabling to simulate the sorting matrix 
+    # We're now examining the modified fluoerscence distribution where the shape parameter b has been multiplied by the fluoerscence ratio kappa.
     return(stats.gamma.cdf(Part_conv[j+1],A[i], scale=kappa*B[i])-stats.gamma.cdf(Part_conv[j],A[i], scale=kappa*B[i]))
 
+def is_pos_def(X):
+    # Test if the hessian (fisher information) is invertible
+    return np.all(np.linalg.eigvals(X) > 0)
 
-# Compute Poisson intensity parameter
-def intensity_parameter(i,j,a,b):
-    Number_construct=df2['Estimation_mixture_number'][i]
-    if Nj[j]==0:
-        return(0)
-    else :
-        if j==BINS-1:
-            probability_bin=1-stats.gamma.cdf(Part_conv[j],a,scale=kappa*b)
-        else:
-            probability_bin=stats.gamma.cdf(Part_conv[j+1],a,scale=kappa*b)-stats.gamma.cdf(Part_conv[j],a,scale=kappa*b) 
-        return Number_construct*probability_bin*READS[j]/Nj[j]
+def ab_to_mu_sigmasquared(a,b):
+    # Map shape (a) and scale (b) to mean (mu) and variance (sigmasquared)
+    return np.array([a*b,a*b*b])
 
+def matrix_delta(a,b):
+    #Gives confidence interval for mu and sigma (delta theorem)
+    return np.array([[b,a],[b**2,2*a*b]])
 
-def intensity_parameter_reparameterisation(i,j,alpha,beta):  # Compute the poisson intensity parameter when enforcing the positive constraint on a and b by rewriting alpha=log(a) and beta=log(b)
-    Number_construct=df2['Estimation_mixture_number'][i]
-    if Nj[j]==0:
-        return(0)
-    else :
-        if j==BINS-1:
-            probability_bin=1-stats.gamma.cdf(Part_conv[j],np.exp(alpha),scale=kappa*np.exp(beta))
-        else:
-            probability_bin=stats.gamma.cdf(Part_conv[j+1],np.exp(alpha),scale=kappa*np.exp(beta))-stats.gamma.cdf(Part_conv[j],np.exp(alpha),scale=kappa*np.exp(beta)) 
-        return Number_construct*probability_bin*READS[j]/Nj[j]
-
-
-def data_transformation_bins(X):  #Better representation of the raw sequecing data to facilitate the computation of the MOM estimations
+def data_transformation_bins(X):
+    #Better representation of the raw sequencing data to facilitate the computation of the MOM estimates
     X=np.ceil(X)
     X=X.astype(int)
     T=np.repeat(Mean_expression_bins,X)
     return(T)
 
-def starting_point_binned(X):   #Compute empirical moments from data and return the shape and scale parameters for the gamma distribution
+def starting_point_binned(X):
+    #Compute empirical moments from data and return the shape and scale parameters for the gamma distribution
     X=np.ceil(X)
     X=X.astype(int)
     T=data_transformation_bins(X)
@@ -97,7 +86,9 @@ def starting_point_binned(X):   #Compute empirical moments from data and return 
     return np.array([(ab**2)/abb,abb/ab])
 
 
-def starting_point_binned_reparameterised(X):   #Compute empirical moments from data and return the log reparameterisation of both shape and scale parameters of the gamma distribution 
+
+def starting_point_binned_reparameterised(X): 
+    #Compute empirical moments from data and return the log reparameterisation of both shape and scale parameters of the gamma distribution 
     X=np.ceil(X)
     X=X.astype(int)
     T=data_transformation_bins(X)
@@ -114,26 +105,21 @@ def starting_point_binned_reparameterised(X):   #Compute empirical moments from 
 
 
 
-def neg_ll_reg(theta,construct): #Compute regularised negative likelihood
-    a=theta[0]
-    b=theta[1]
-    NL=0
-    i=construct
-    #if a>30 or b>20000:
-        #NL=2000
-    for j in range(BINS):
-        intensity=intensity_parameter(i,j,a,b)
-        if Sij[construct,j]!=0:
-            intensity+=1e-300 #Avoid float error with np.log
-            NL+=intensity-Sij[i,j]*np.log(intensity)
+def intensity_parameter_reparameterisation(i,j,alpha,beta):
+    # Compute Poisson intensity parameter- We enforced the positive constraint on a and b by rewriting alpha=log(a) and beta=log(b)
+    Number_construct=df2['Estimation_mixture_number'][i]
+    if Nj[j]==0:
+        return(0)
+    else :
+        if j==BINS-1:
+            probability_bin=1-stats.gamma.cdf(Part_conv[j],np.exp(alpha),scale=kappa*np.exp(beta))
         else:
-            NL+=intensity
-    NL+=((a/20)**2+(b/2000)**2)*50
-    NL+=((1e-2/a)**2+(5e-1/b)**2)*50
-    return(NL)
+            probability_bin=stats.gamma.cdf(Part_conv[j+1],np.exp(alpha),scale=kappa*np.exp(beta))-stats.gamma.cdf(Part_conv[j],np.exp(alpha),scale=kappa*np.exp(beta)) 
+        return Number_construct*probability_bin*READS[j]/Nj[j]
 
 
-def neg_ll_reg_rep(theta,construct): #Compute regularised negative likelihood with the log reparameterisation of a and b (shape and scale)
+def neg_ll_reg_rep(theta,construct): 
+    #Compute regularised negative likelihood with the log reparameterisation of a and b (shape and scale)
     alpha=theta[0]
     beta=theta[1]
     NL=0
@@ -143,80 +129,14 @@ def neg_ll_reg_rep(theta,construct): #Compute regularised negative likelihood wi
     for j in range(BINS):
         intensity=intensity_parameter_reparameterisation(i,j,alpha,beta)
         if Sij[construct,j]!=0:
-            intensity+=1e-300 #Avoid float error with np.log
-            NL+=intensity-Sij[i,j]*np.log(intensity)
+            if intensity>0: #Avoid float error with np.log
+                NL+=intensity-Sij[i,j]*np.log(intensity)
         else:
             NL+=intensity
-    #NL+=((np.exp(alpha)/20)**2+(np.exp(beta)/2000)**2)*50
-    #NL+=((1e-2/np.exp(alpha))**2+(5e-1/np.exp(beta))**2)*50
     return(NL)
 
-
-
-def neg_ll(theta,construct):  #Compute negative likelihood
-    a=theta[0]
-    b=theta[1]
-    NL=0
-    i=construct
-    #if a>30 or b>20000:
-        #NL=2000
-    for j in range(BINS):
-        intensity=intensity_parameter(i,j,a,b)
-        if intensity>1e-15:
-            #if Sij[construct,j]!=0:
-            NL+=intensity-Sij[i,j]*np.log(intensity)
-    return(NL)
-
-
-def is_pos_def(X):  # Test if the hessian (fisher information) is invertible
-    return np.all(np.linalg.eigvals(X) > 0)
-
-def ab_to_mu_sigmasquared(a,b):   # Map shape (a) and scale (b) to mean (mu) and variance (sigmasquared)
-    return np.array([a*b,a*b*b])
-
-def matrix_delta(a,b):  #Gives confidence interval for mu and sigma (delta theorem)
-    return np.array([[b,a],[b**2,2*a*b]])
-
-def ML_inference(i):   #inference function
-    Dataresults=np.zeros(14)
-    T=Nijhat[i,:]
-    if np.sum(T)!=0:     #Can we do inference? has the genetic construct been sequenced?
-        Dataresults[13]=(T[0]+T[-1])/np.sum(T) #Scoring of the data- How lopsided is the read count? all on the left-right border?
-        a,b=starting_point_binned(T)
-        #The four next lines provide the MOM estimates on a,b, mu and sigma
-        Dataresults[8]=a #value of a
-        Dataresults[9]=b
-        Dataresults[10]=ab_to_mu_sigmasquared(a,b)[0] #value of mu
-        Dataresults[11]=ab_to_mu_sigmasquared(a,b)[1] #value of sigma
-        if np.count_nonzero(T)==1: #is there only one bin to be considered? then naive inference
-            Dataresults[12]=3 #Inference grade 3 : Naive inference
-        else:  #in the remaining case, we can deploy the mle framework to imporve the mom estimation
-            res=minimize(neg_ll_reg,starting_point_binned(T),args=(i),method="Nelder-Mead")
-            c,d=res.x
-            Dataresults[0]=c #value of a
-            Dataresults[1]=d #value of b
-            Dataresults[4]=ab_to_mu_sigmasquared(c,d)[0] #value of a
-            Dataresults[5]=ab_to_mu_sigmasquared(c,d)[1]
-            fi = lambda x: neg_ll(x,i)
-            fdd = nd.Hessian(fi) 
-            hessian_ndt=fdd([res.x[0], res.x[1]])
-            if is_pos_def(hessian_ndt)==True:
-                inv_J=np.linalg.inv(hessian_ndt)
-                e,f=np.sqrt(np.diag(inv_J))
-                g,h=np.sqrt(np.diag(np.matmul(np.matmul(matrix_delta(res.x[0], res.x[1]),inv_J),matrix_delta(res.x[0], res.x[1]).T)))
-                Dataresults[2]=e
-                Dataresults[3]=f
-                Dataresults[6]=g
-                Dataresults[7]=h
-                Dataresults[12]=1 #Inference grade 1 : ML inference  successful
-            else:
-                Dataresults[12]=2 #Inference grade 2 : ML inference, although the hessian is not inverstible at the minimum... Probably an issue with the data and model mispecification
-    else:
-        Dataresults[12]=4   #Inference grade 4: No inference is possible
-    return(Dataresults)
-
-
-def ML_inference_reparameterised(i):  #inference function using the log reparameterisation for the scale and shape parameters of the gamma distribution
+def ML_inference_reparameterised(i):
+    #inference function using the log reparameterisation for the scale and shape parameters of the gamma distribution
     Dataresults=np.zeros(14)
     T=Nijhat[i,:]
     if np.sum(T)!=0:     #Can we do inference? has the genetic construct been sequenced?
