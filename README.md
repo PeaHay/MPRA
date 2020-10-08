@@ -14,5 +14,5 @@ We then challenged our theoretical approach by confronting our new estimator wit
 ## Key Results:
 ![MPRA](https://user-images.githubusercontent.com/66125433/95225452-b9c3db00-07f3-11eb-9dd8-53f57dc7ec1e.jpg)
 
-Fig2 reveals the upward bias of the MOM-based estimators and shows the superiority of a Maximum-likelihood based approach with FLAIR when estimating the parameters of the underlying gamma distribution
+Fig2 reveals the upward bias of the MOM-based estimators and shows the superiority of a Maximum-likelihood based approach with FLAIR when estimating the parameters of the underlying gamma distribution. <br />
 Fig4 can help with preparing the intial library of constructs by setting a lower limit on the number of cells sorted: There's little improvment on the accuracy of the estimates after s=200. 
