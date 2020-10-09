@@ -1,4 +1,4 @@
-_Code to reproduce certain figures in paper "MPRA: simulation and inference"_ <br />
+_Code to reproduce some figures in the paper "MPRA: simulation and inference"_ <br />
 _The technical information to derive the estimators and simulation algorithm can be found here:_ https://www.overleaf.com/read/zwsdfbbgwtqh
 
 ## MPRA- The big data era
@@ -17,3 +17,9 @@ We then challenged our theoretical approach by confronting our new estimator wit
 
 Fig2 reveals the upward bias of the MOM-based estimators and shows the superiority of a Maximum-likelihood based approach with FLAIR when estimating the parameters of the underlying gamma distribution. <br />
 Fig4 can help with preparing the intial library of constructs by setting a lower limit on the number of cells sorted: There's little improvment on the accuracy of the estimates after s=200. 
+
+## Files
+__Inference Folder__: <br>
+* Inference_lognormal_distribution.py: Script to perform maximum likelihood based inference (FLAIR) on Flow-seq data, applied to Cambray dataset.
+* FLAIR_lognormal_Cambray_1-4.ipynb: Jupyter notebook analysing the results of the inference on the 4 merged experimental replicates and elevate the resutls as ground truth to compare with the subsampled experiments.
+* Merging_repetitions_Cambray.ipynb :Jupyter notebook showing the filtration steps to clean the flow-seq sequecning raw data, and export it
