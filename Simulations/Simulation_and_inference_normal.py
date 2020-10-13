@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 N=1.5e6  #Total cells sorted during the flow-cytometry step
 BIAS_LIBRARY=False   #False if each genetic construct is homogeneously represented accross the library. True if the ratios are to be sampled from Dirichlet(1,1,...,1)
 Ratio_amplification=100  #post-flowcytometer step
-BINS=12  #Number of bins in your flow-cytometer
+BINS=16  #Number of bins in your flow-cytometer
 FLUORESCENCE_MAX=10**6 #Maximum Fluorescence measurement of the Flow cytometer
 BUDGET_READS=1e7  #Number of reads to allocate. Budget
 SORTING_TO_INFINITY=False
