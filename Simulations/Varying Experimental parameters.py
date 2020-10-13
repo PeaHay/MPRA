@@ -10,6 +10,9 @@ import numdifftools as nd
 from scipy.optimize import minimize 
 from joblib import Parallel, delayed
 
+from datetime import datetime
+startTime = datetime.now()
+
 ##############################################################################################################
 ############################  Experimental Parameters,setting the grid. Insert Values  #########################################
 DIVERSITY=1000 #(<242900)
@@ -27,19 +30,16 @@ nb_bins=len(BINS_RANGE)
 nb_reads=len(BUDGET_READS_RANGE)
 
 
-MAPE=np.zeros((REPETITIONS,nb_cells,nb_bins,nb_reads,4))
+MAPE=np.zeros((REPLICATES,nb_cells,nb_bins,nb_reads,4))
 
 ##############################################################################################################
 ###################################  Load & Augment Data #####################################################
 
 
-df=pd.read_csv('Library_normal.csv').sample(n=DIVERSITY random_state=1)
+df=pd.read_csv('Library_normal.csv').sample(n=DIVERSITY,random_state=1)
 A=(df.iloc[:,0]).values
 B=(df.iloc[:,1]).values
 
-#a few convenient variables related to the binning for the code
-Part_conv=np.log(np.logspace(0,np.log10(FLUORESCENCE_MAX),BINS+1))  #Equally partitioning the fluorescence interval in log-space.Each entry is the lower bound for the fluoresnce in the bin
-Mean_expression_bins=np.array([(Part_conv[j+1]+Part_conv[j])/2 for j in range(BINS)])
 
 ##############################################################################################################
 ###########################################  Functions   #####################################################
@@ -145,17 +145,17 @@ def ML_inference_reparameterised(i):
 #### STEP 1 - Draw the ratio p_concentration
 
 if BIAS_LIBRARY==True:
-   params=np.ones(Diversity)
+   params=np.ones(DIVERSITY)
    Dir=[random.gammavariate(a,1) for a in params]
    Dir=[v/sum(Dir) for v in Dir]
    # Sample from the 30,000 simplex to get ratios 
-   #p_concentration=np.ones(Diversity)/Diversity
+   #p_concentration=np.ones(DIVERSITY)/DIVERSITY
    p_concentration=Dir   
 else:
-   p_concentration=[1/Diversity]*Diversity
+   p_concentration=[1/DIVERSITY]*DIVERSITY
 
 #### STEP 2 - Draw the sample sizes= of each genetic construct
-for N in SORTING_CELLS:
+for N in N_RANGE:
     Ni=np.random.multinomial(N, p_concentration, size=1)
     Ni=Ni[0]
 
@@ -165,7 +165,10 @@ for N in SORTING_CELLS:
 
     ## Compute ratios qji
     for BINS in BINS_RANGE:
-        Qij=np.fromfunction(sorting_protein_matrix_populate, (Diversity, BINS), dtype=int)
+        #a few convenient variables related to the binning for the code
+        Part_conv=np.log(np.logspace(0,np.log10(FLUORESCENCE_MAX),BINS+1))  #Equally partitioning the fluorescence interval in log-space.Each entry is the lower bound for the fluoresnce in the bin
+        Mean_expression_bins=np.array([(Part_conv[j+1]+Part_conv[j])/2 for j in range(BINS)])
+        Qij=np.fromfunction(sorting_protein_matrix_populate, (DIVERSITY, BINS), dtype=int)
         if SORTING_TO_INFINITY==True:
             Qij[:,-1]=1-np.cumsum(Qij,axis=1)[:,-2] #Compensate for right-border effect (The flow-cytometer collects all the remaining cells, effectively 'sorting to infinity'
 
@@ -187,14 +190,14 @@ for N in SORTING_CELLS:
                 READS=np.floor(Nj*BUDGET_READS/N) #Allocate reads with repsect to the number of cells srted in each bin
                 #### STEP 7 - DNA sampling
 
-                Sij=np.zeros((Diversity,BINS)) 
+                Sij=np.zeros((DIVERSITY,BINS)) 
 
                 #Compute ratios& Multinomial sampling
                 for j in range(BINS):
                     if np.sum(Nij_amplified,axis=0)[j]!=0:
                         Concentration_vector=Nij_amplified[:,j]/np.sum(Nij_amplified,axis=0)[j]
                     else:
-                        Concentration_vector=np.zeros(Diversity)
+                        Concentration_vector=np.zeros(DIVERSITY)
                     Sij[:,j]=np.random.multinomial(READS[j],Concentration_vector,size=1)
                     
 
@@ -210,31 +213,33 @@ for N in SORTING_CELLS:
                 Nijhat=np.multiply(Sij,Enrich)
 
                 #Parallel computing
-                Data_results = Parallel(n_jobs=-1,max_nbytes=None)(delayed(ML_inference_reparameterised)(i)for i in range(Diversity))
+                Data_results = Parallel(n_jobs=-1,max_nbytes=None)(delayed(ML_inference_reparameterised)(i)for i in range(DIVERSITY))
                 df_results= pd.DataFrame(Data_results)
                 
                 df_results.rename(columns={0: "mu_MLE", 1: "sigma_MLE", 2: "mu_std",3: "sigma_std",4: "mu_MOM", 5: "sigma_MOM", 6: "Inference_grade",7: "Score"}, errors="raise",inplace=True)
                 df_results['mu_gt']=df.iloc[:,0]
                 df_results['sigma_gt']=df.iloc[:,1]
-                df[df['Inference_grade']<2]
+                df_results=df_results.loc[df_results["Inference_grade"]<2]
                 M_aux=np.empty(4)
 
-                df['mu_error_MLE']=df.apply(lambda row: np.abs(row['mu_MLE']-row['mu_gt'])/row['mu_gt'], axis=1)
-                M_aux[0]df['mu_error_MLE'].mean
-                df['mu_error_MOM']=df.apply(lambda row: np.abs(row['mu_MOM']-row['mu_gt'])/row['mu_gt'], axis=1)
-                M_aux[1]df['mu_error_MOM'].mean
-                df['sigma_error_MLE']=df.apply(lambda row: np.abs(row['sigma_MLE']-row['sigma_gt'])/row['sigma_gt'], axis=1)
-                M_aux[2]df['sigma_error_MLE'].mean
-                df['sigma_error_MLE']=df.apply(lambda row: np.abs(row['sigma_MLE']-row['sigma_gt'])/row['sigma_gt'], axis=1)
-                M_aux[3]df['sigma_error_MOM'].mean
+                df_results['mu_error_MLE']=np.abs(df_results['mu_MLE']-df_results['mu_gt'])/df_results['mu_gt']
+                #df_results.apply(lambda row: np.abs(row['mu_MLE']-row['mu_gt'])/row['mu_gt'], axis=1)
+                M_aux[0]=df_results['mu_error_MLE'].mean()
+                df_results['mu_error_MOM']=np.abs(df_results['mu_MOM']-df_results['mu_gt'])/df_results['mu_gt']
+                M_aux[1]=df_results['mu_error_MOM'].mean()
+                df_results['sigma_error_MLE']=np.abs(df_results['sigma_MLE']-df_results['sigma_gt'])/df_results['sigma_gt']
+                M_aux[2]=df_results['sigma_error_MLE'].mean()
+                df_results['sigma_error_MOM']=np.abs(df_results['sigma_MOM']-df_results['sigma_gt'])/df_results['sigma_gt']
+                M_aux[3]=df_results['sigma_error_MOM'].mean()
 
                 
 
                 N_index=N_RANGE.index(N)
                 R_index=BUDGET_READS_RANGE.index(BUDGET_READS)
                 B_index=BINS_RANGE.index(BINS)
-                MAPE[0,N_index,B_index,R_index,i]=M_aux
+                MAPE[0,N_index,B_index,R_index,:]=M_aux
 
             else:
                 pass
 np.save('Grid_results',MAPE)
+print(datetime.now() - startTime) 
