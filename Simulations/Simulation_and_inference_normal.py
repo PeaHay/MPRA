@@ -25,7 +25,7 @@ SORTING_TO_INFINITY=False
 ###################################  Load & Augment Data #####################################################
 
 
-df=pd.read_csv('Library_normal.csv').iloc[:1500,:]
+df=pd.read_csv('Library_normal.csv').sample(n=1000, random_state=1)
 A=(df.iloc[:,0]).values
 B=(df.iloc[:,1]).values
 Diversity=len(df)
